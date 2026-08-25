@@ -130,7 +130,7 @@ class App(tk.Tk):
         for w in parent.winfo_children(): w.destroy()
         sel=self.stage_list.curselection() if hasattr(self,'stage_list') else (); i=sel[0] if sel else self.current_stage; self.current_stage=i; s=self.current['stages'][i]
         tk.Label(parent,text=s['name'],font=('Segoe UI',17,'bold'),bg='white',fg='#183b56').pack(anchor='e',padx=25,pady=(20,3)); tk.Label(parent,text=s.get('purpose',''),bg='white',fg='#64748b').pack(anchor='e',padx=25,pady=(0,15))
-        canvas=tk.Canvas(parent,bg='white',highlightthickness=0,bd=0); scroll=ttk.Scrollbar(parent,orient='vertical',command=canvas.yview); inner=tk.Frame(canvas,bg='white'); window_id=canvas.create_window((0,0),window=inner,anchor='nw'); inner.bind('<Configure>',lambda e:canvas.configure(scrollregion=canvas.bbox('all'))); canvas.bind('<Configure>',lambda e:canvas.itemconfigure(window_id,width=e.width)); canvas.configure(yscrollcommand=scroll.set); canvas.pack(side='left',fill='both',expand=True); scroll.pack(side='right',fill='y'); self._scroll_canvas=canvas; self._scroll_canvas.bind('<Enter>',lambda e:canvas.focus_set()); self._scroll_canvas.bind('<MouseWheel>',lambda e:canvas.yview_scroll(int(-e.delta/120),'units')); self._scroll_canvas.bind('<Button-4>',lambda e:canvas.yview_scroll(-3,'units')); self._scroll_canvas.bind('<Button-5>',lambda e:canvas.yview_scroll(3,'units')); self._scroll_canvas.bind('<Key-Up>',lambda e:canvas.yview_scroll(-3,'units')); self._scroll_canvas.bind('<Key-Down>',lambda e:canvas.yview_scroll(3,'units'))
+                canvas=tk.Canvas(parent,bg='white',highlightthickness=0,bd=0); scroll=ttk.Scrollbar(parent,orient='vertical',command=canvas.yview); inner=tk.Frame(canvas,bg='white'); window_id=canvas.create_window((0,0),window=inner,anchor='nw'); inner.bind('<Configure>',lambda e:canvas.configure(scrollregion=canvas.bbox('all'))); canvas.bind('<Configure>',lambda e:canvas.itemconfigure(window_id,width=e.width)); canvas.configure(yscrollcommand=scroll.set); canvas.pack(side='left',fill='both',expand=True); scroll.pack(side='right',fill='y'); self._scroll_canvas=canvas; self._scroll_canvas.bind('<Enter>',lambda e:canvas.focus_set()); self._scroll_canvas.bind('<MouseWheel>',lambda e:canvas.yview_scroll(int(-e.delta/120),'units')); self._scroll_canvas.bind('<Button-4>',lambda e:canvas.yview_scroll(-3,'units')); self._scroll_canvas.bind('<Button-5>',lambda e:canvas.yview_scroll(3,'units')); self._scroll_canvas.bind('<Key-Up>',lambda e:canvas.yview_scroll(-3,'units')); self._scroll_canvas.bind('<Key-Down>',lambda e:canvas.yview_scroll(3,'units'))
         if s['kind']=='problem':
             w=self.stage_text(inner,'الوضعية المشكلة',s,'problem'); self.stage_text(inner,'دراسة الوضعية / التفاعل مع المتعلمين',s,'study_text'); self.items_editor(inner,s,'hypotheses','الفرضيات',self.hypothesis_item)
         elif s['kind']=='task':
@@ -143,7 +143,14 @@ class App(tk.Tk):
         elif s['kind']=='self_learning':
             for lab,k in [('المهمة','task'),('التعليمات','instructions'),('المنتوج المنتظر','product'),('الموارد','resources'),('الأجل','deadline')]: self.stage_text(inner,lab,s,k)
         else: self.items_editor(inner,s,'activities','الأنشطة',self.simple_item)
+        self._bind_scroll_widgets(inner,canvas)
         ttk.Button(inner,text='حفظ تلقائي',command=self.save_current).pack(anchor='e',padx=25,pady=18)
+    def _bind_scroll_widgets(self,widget,canvas):
+        for child in widget.winfo_children():
+            child.bind('<MouseWheel>',lambda e:canvas.yview_scroll(int(-e.delta/120),'units'),add='+')
+            child.bind('<Button-4>',lambda e:canvas.yview_scroll(-3,'units'),add='+')
+            child.bind('<Button-5>',lambda e:canvas.yview_scroll(3,'units'),add='+')
+            self._bind_scroll_widgets(child,canvas)
     def stage_text(self,p,label,obj,key):
         f=tk.Frame(p,bg='white'); f.pack(fill='x',padx=25,pady=7); tk.Label(f,text=label,bg='white',font=('Segoe UI',10,'bold')).pack(anchor='e'); w=tk.Text(f,height=4,wrap='word',font=('Segoe UI',11)); w.insert('1.0',obj.get(key,'')); w.pack(fill='x',pady=3); w.bind('<FocusOut>',lambda e:self.set_stage_value(obj,key,w.get('1.0','end-1c'))); return w
     def set_stage_value(self,obj,key,val): obj[key]=val; self.current['updated_at']=now(); self.store.save()
