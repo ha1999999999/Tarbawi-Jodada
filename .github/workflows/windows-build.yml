@@ -1,24 +1,10 @@
 name: Windows Build
 
-
-
-
-
-
-
-
 on:
   workflow_dispatch:
   push:
     tags:
       - 'v*'
-
-
-
-
-
-
-
 
 jobs:
   build-windows:
@@ -27,24 +13,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-
-
-
-
-
-
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-
-
-
-
-
-
-
 
       - name: Install dependencies
         shell: pwsh
@@ -52,13 +24,6 @@ jobs:
           python -m venv .build_env
           .\.build_env\Scripts\python.exe -m pip install --upgrade pip
           .\.build_env\Scripts\python.exe -m pip install pyinstaller reportlab weasyprint
-
-
-
-
-
-
-
 
       - name: Run tests
         shell: pwsh
@@ -69,13 +34,6 @@ jobs:
           .\.build_env\Scripts\python.exe test_exports.py
           .\.build_env\Scripts\python.exe test_lifecycle.py
 
-
-
-
-
-
-
-
       - name: Build EXE
         shell: pwsh
         run: |
@@ -83,14 +41,44 @@ jobs:
           New-Item -ItemType Directory -Force -Path release\Tarbawi-Jodada-Portable | Out-Null
           Copy-Item dist\Tarbawi-Jodada.exe release\Tarbawi-Jodada-Portable\Tarbawi-Jodada.exe
 
-
-
-
-
-
-
-
       - name: Smoke test EXE
         shell: pwsh
         run: |
           $p = Start-Process -FilePath "$PWD\dist\Tarbawi-Jodada.exe" -PassThru
+          Start-Sleep -Seconds 8
+          if ($p.HasExited) { throw "The packaged application exited before the smoke test completed." }
+          Stop-Process -Id $p.Id -Force
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup -y --no-progress
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          $iscc = (Get-Command ISCC.exe -ErrorAction SilentlyContinue).Source
+          if (-not $iscc) { $iscc = (Get-ChildItem -Path 'C:\Program Files','C:\Program Files (x86)','C:\ProgramData\chocolatey\lib' -Filter ISCC.exe -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1).FullName }
+          if (-not $iscc) { throw "Inno Setup compiler was not found." }
+          & $iscc "$PWD\Tarbawi-Jodada.iss"
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed." }
+          if (-not (Test-Path release\Tarbawi-Jodada-Setup.exe)) { throw "Setup.exe was not created." }
+
+      - name: Smoke test installer
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path _install_test | Out-Null
+          Start-Process -FilePath "$PWD\release\Tarbawi-Jodada-Setup.exe" -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/DIR=$PWD\_install_test" -Wait
+          if (-not (Test-Path _install_test\Tarbawi-Jodada.exe)) { throw "Installed EXE was not found." }
+
+      - name: Package portable ZIP
+        shell: pwsh
+        run: Compress-Archive -Path release\Tarbawi-Jodada-Portable -DestinationPath release\Tarbawi-Jodada-Portable.zip -Force
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Tarbawi-Jodada-Windows
+          path: |
+            release/Tarbawi-Jodada-Setup.exe
+            release/Tarbawi-Jodada-Portable.zip
+          if-no-files-found: error
