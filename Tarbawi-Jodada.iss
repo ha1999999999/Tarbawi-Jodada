@@ -8,13 +8,13 @@ AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 DefaultDirName={autopf}\Tarbawi-Jodada
 DefaultGroupName={#MyAppName}
-OutputDir=..\release
+OutputDir=release
 OutputBaseFilename=Tarbawi-Jodada-Setup
 Compression=lzma
 SolidCompression=yes
 ArchitecturesInstallIn64BitMode=x64
 [Files]
-Source: "..\dist\Tarbawi-Jodada.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "dist\Tarbawi-Jodada.exe"; DestDir: "{app}"; Flags: ignoreversion
 [Icons]
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
