@@ -1,0 +1,32 @@
+Tarbawi-Jodada - Windows Build Guide
+
+For a beginner user
+
+1. Install Python 3.11, 3.12, or 3.13 for Windows.
+   During installation, enable: Add Python to PATH.
+
+2. Unzip the project folder to a normal location, such as Documents.
+
+3. Open the project folder.
+
+4. Double-click:
+   BUILD-WINDOWS.bat
+
+5. Wait until the window says BUILD COMPLETE or PORTABLE BUILD COMPLETE.
+   Do not open Python and do not type anything in a command window.
+
+6. Open the release folder.
+
+7. To use the portable version, open:
+   release\Tarbawi-Jodada-Portable
+   Then double-click Tarbawi-Jodada.exe.
+
+8. If the installer was created, double-click:
+   release\Tarbawi-Jodada-Setup.exe
+   Follow the normal installation screens. A Start menu shortcut and a desktop shortcut will be created.
+
+If the installer was not created, the portable version is still available. Install Inno Setup once, then double-click BUILD-WINDOWS.bat again.
+
+The installed application does not need Node.js, npm, pnpm, Manus, localhost, CMD, or Internet during normal use.
+
+Your lessons are stored locally in Windows AppData and remain available after closing or updating the application.
