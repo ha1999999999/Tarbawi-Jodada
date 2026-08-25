@@ -4,8 +4,8 @@ from PyInstaller.utils.hooks import collect_all
 weasy_datas, weasy_binaries, weasy_hidden = collect_all('weasyprint')
 
 analysis = Analysis(
-    ['app/main.py'],
-    pathex=['.'],
+    ['..\\app\\main.py'],
+    pathex=['..'],
     binaries=weasy_binaries,
     datas=weasy_datas,
     hiddenimports=weasy_hidden + ['weasyprint', 'weasyprint.text.ffi', 'cairocffi'],
