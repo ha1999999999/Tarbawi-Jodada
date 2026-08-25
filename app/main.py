@@ -109,18 +109,39 @@ class App(tk.Tk):
     def preview_selected(self,t):
         if self.selected(t): self.current=self.store.lesson(self.selected(t)); self.show_preview()
     def show_editor(self):
-        self.clear(); self.header('محرر الجذاذة', 'تُحفظ التعديلات تلقائياً أثناء العمل');
-        toolbar=self.card(); ttk.Button(toolbar,text='حفظ',command=self.save_current).pack(side='right',padx=6,pady=10); ttk.Button(toolbar,text='معاينة كاملة',command=self.show_preview).pack(side='right',padx=6,pady=10); ttk.Button(toolbar,text='رجوع',command=self.show_lessons).pack(side='left',padx=6,pady=10)
-        basics=self.card(); tk.Label(basics,text='المعلومات الأساسية',bg='white',fg='#183b56',font=('Segoe UI',13,'bold')).pack(anchor='e',padx=18,pady=(10,4)); grid=tk.Frame(basics,bg='white'); grid.pack(fill='x',padx=18,pady=(0,10)); basic_fields=[('المؤسسة','institution'),('الأكاديمية','academy'),('المديرية','directorate'),('الأستاذ','teacher'),('المستوى','level'),('السنة الدراسية','school_year'),('المدخل','entry'),('المجال','domain'),('الوحدة','unit'),('عنوان الدرس','lesson_title'),('عدد الحصص','sessions'),('مدة الحصة','period'),('التاريخ','date')]
+        self.clear()
+        self.header('محرر الجذاذة', 'تُحفظ التعديلات تلقائياً أثناء العمل')
+        toolbar=self.card()
+        ttk.Button(toolbar,text='حفظ',command=self.save_current).pack(side='right',padx=6,pady=10)
+        ttk.Button(toolbar,text='معاينة كاملة',command=self.show_preview).pack(side='right',padx=6,pady=10)
+        ttk.Button(toolbar,text='رجوع',command=self.show_lessons).pack(side='left',padx=6,pady=10)
+        viewport=tk.Frame(self.main,bg='#f5f7fb'); viewport.pack(fill='both',expand=True,padx=35,pady=(0,12))
+        canvas=tk.Canvas(viewport,bg='#f5f7fb',highlightthickness=0,bd=0); scrollbar=ttk.Scrollbar(viewport,orient='vertical',command=canvas.yview)
+        content=tk.Frame(canvas,bg='#f5f7fb'); window_id=canvas.create_window((0,0),window=content,anchor='nw')
+        content.bind('<Configure>',lambda e:canvas.configure(scrollregion=canvas.bbox('all'))); canvas.bind('<Configure>',lambda e:canvas.itemconfigure(window_id,width=e.width)); canvas.configure(yscrollcommand=scrollbar.set)
+        canvas.pack(side='left',fill='both',expand=True); scrollbar.pack(side='right',fill='y'); self._editor_canvas=canvas; self._scroll_canvas=canvas; self._scroll_inner=content
+        canvas.bind_all('<MouseWheel>',lambda e:canvas.yview_scroll(int(-e.delta/120),'units'),add='+'); canvas.bind_all('<Button-4>',lambda e:canvas.yview_scroll(-3,'units'),add='+'); canvas.bind_all('<Button-5>',lambda e:canvas.yview_scroll(3,'units'),add='+')
+        canvas.bind_all('<Key-Up>',lambda e:canvas.yview_scroll(-3,'units'),add='+'); canvas.bind_all('<Key-Down>',lambda e:canvas.yview_scroll(3,'units'),add='+')
+        basics=tk.Frame(content,bg='white',highlightbackground='#e2e8f0',highlightthickness=1); basics.pack(fill='x',pady=8)
+        tk.Label(basics,text='المعلومات الأساسية',bg='white',fg='#183b56',font=('Segoe UI',13,'bold')).pack(anchor='e',padx=18,pady=(10,4))
+        grid=tk.Frame(basics,bg='white'); grid.pack(fill='x',padx=18,pady=(0,10)); basic_fields=[('المؤسسة','institution'),('الأكاديمية','academy'),('المديرية','directorate'),('الأستاذ','teacher'),('المستوى','level'),('السنة الدراسية','school_year'),('المدخل','entry'),('المجال','domain'),('الوحدة','unit'),('عنوان الدرس','lesson_title'),('عدد الحصص','sessions'),('مدة الحصة','period'),('التاريخ','date')]
         for n,(lab,key) in enumerate(basic_fields):
             cell=tk.Frame(grid,bg='white'); cell.grid(row=n//4,column=n%4,padx=6,pady=4,sticky='ew'); grid.columnconfigure(n%4,weight=1); tk.Label(cell,text=lab,bg='white',font=('Segoe UI',9,'bold')).pack(anchor='e'); e=tk.Entry(cell,justify='right',font=('Segoe UI',10)); e.insert(0,str(self.current.get(key,''))); e.pack(fill='x'); e.bind('<FocusOut>',lambda _,k=key,w=e:(self.current.__setitem__(k,w.get()),self.save_silent()))
         extended=tk.Frame(basics,bg='white'); extended.pack(fill='x',padx=18,pady=(0,10))
         for lab,key in [('الكفاية','competency'),('الأهداف','objectives'),('الموارد','resources'),('المراجع','references')]:
-            cell=tk.Frame(extended,bg='white'); cell.pack(side='right',fill='x',expand=True,padx=6); tk.Label(cell,text=lab,bg='white',font=('Segoe UI',9,'bold')).pack(anchor='e'); e=tk.Text(cell,height=2,wrap='word',font=('Segoe UI',10)); value=self.current.get(key,[]); e.insert('1.0','\n'.join(value) if isinstance(value,list) else str(value)); e.pack(fill='x'); e.bind('<FocusOut>',lambda _,k=key,w=e:(self.current.__setitem__(k,[x for x in w.get('1.0','end-1c').splitlines() if x.strip()] if k in ('objectives','resources','references') else w.get('1.0','end-1c')),self.save_silent()))
-        body=tk.Frame(self.main,bg='#f5f7fb'); body.pack(fill='both',expand=True,padx=35); left=tk.Frame(body,bg='white',width=260); left.pack(side='right',fill='y',padx=(0,10)); left.pack_propagate(False); content=tk.Frame(body,bg='white'); content.pack(side='left',fill='both',expand=True)
-        tk.Label(left,text='مراحل الجذاذة',font=('Segoe UI',13,'bold'),bg='white',fg='#183b56').pack(anchor='e',padx=18,pady=16); self.stage_list=tk.Listbox(left,justify='right',font=('Segoe UI',11),relief='flat',activestyle='none',selectbackground='#dbeafe'); self.stage_list.pack(fill='both',expand=True,padx=10,pady=(0,15));
-        for i,s in enumerate(self.current['stages']): self.stage_list.insert('end',f'{i+1}. {s["name"]}')
-        self.stage_list.bind('<<ListboxSelect>>',lambda _:self.render_stage(content)); self.stage_list.selection_set(self.current_stage); self.render_stage(content)
+            cell=tk.Frame(extended,bg='white'); cell.pack(side='right',fill='x',expand=True,padx=6); tk.Label(cell,text=lab,bg='white',font=('Segoe UI',9,'bold')).pack(anchor='e'); e=tk.Text(cell,height=2,wrap='word',font=('Segoe UI',10)); value=self.current.get(key,[]); e.insert('1.0','\\n'.join(value) if isinstance(value,list) else str(value)); e.pack(fill='x'); e.bind('<FocusOut>',lambda _,k=key,w=e:(self.current.__setitem__(k,[x for x in w.get('1.0','end-1c').splitlines() if x.strip()] if k in ('objectives','resources','references') else w.get('1.0','end-1c')),self.save_silent()))
+        body=tk.Frame(content,bg='#f5f7fb'); body.pack(fill='both',expand=True,pady=8); left=tk.Frame(body,bg='white',width=260,highlightbackground='#e2e8f0',highlightthickness=1); left.pack(side='right',fill='y',padx=(0,10)); left.pack_propagate(False); stage_area=tk.Frame(body,bg='white',highlightbackground='#e2e8f0',highlightthickness=1); stage_area.pack(side='left',fill='both',expand=True)
+        tk.Label(left,text='مراحل الجذاذة',font=('Segoe UI',13,'bold'),bg='white',fg='#183b56').pack(anchor='e',padx=18,pady=16); self.stage_list=tk.Listbox(left,justify='right',font=('Segoe UI',11),relief='flat',activestyle='none',selectbackground='#dbeafe'); self.stage_list.pack(fill='both',expand=True,padx=10,pady=(0,8))
+        for i,st in enumerate(self.current['stages']): self.stage_list.insert('end',f'{i+1}. {st["name"]}')
+        order=tk.Frame(left,bg='white'); order.pack(fill='x',padx=10,pady=(0,12)); ttk.Button(order,text='↑ الأعلى',command=lambda:self.move_stage(-1)).pack(side='right',padx=2); ttk.Button(order,text='↓ الأسفل',command=lambda:self.move_stage(1)).pack(side='right',padx=2)
+        self.stage_list.bind('<<ListboxSelect>>',lambda _:self.render_stage(stage_area)); self.stage_list.selection_set(self.current_stage); self.render_stage(stage_area)
+
+    def move_stage(self,delta):
+        if not self.current or not self.current.get('stages'): return
+        i=self.current_stage; j=i+delta
+        if j<0 or j>=len(self.current['stages']): return
+        self.current['stages'][i],self.current['stages'][j]=self.current['stages'][j],self.current['stages'][i]; self.current_stage=j; self.current['updated_at']=now(); self.store.save(); self.show_editor()
+
     def field(self,parent,label,key,multi=False):
         f=tk.Frame(parent,bg='white'); f.pack(fill='x',padx=25,pady=7); tk.Label(f,text=label,bg='white',fg='#334155',font=('Segoe UI',10,'bold')).pack(anchor='e');
         if multi:
@@ -195,16 +216,27 @@ class App(tk.Tk):
     def save_silent(self):
         old=self.store.lesson(self.current['id']); self.current['updated_at']=now(); self.store.data['lessons']=[self.current if x['id']==self.current['id'] else x for x in self.store.data['lessons']] if old else self.store.data['lessons']+[self.current]; self.store.save()
     def export(self,kind,print_it=False):
-        EXPORT_DIR.mkdir(exist_ok=True); base=EXPORT_DIR/(self.current.get('lesson_title') or 'جذاذة').replace('/','-');
+        self.save_silent(); title=(self.current.get('lesson_title') or self.current.get('title') or 'جذاذة').replace('/','-')
         if kind=='pdf':
+            target=filedialog.asksaveasfilename(title='حفظ ملف PDF',initialfile=f'جذاذة - {title}.pdf',defaultextension='.pdf',filetypes=[('ملف PDF','*.pdf')])
+            if not target: return
             try:
                 from weasyprint import HTML
-                HTML(string=html_doc(self.current),base_url=str(EXPORT_DIR)).write_pdf(str(base.with_suffix('.pdf')))
-                messagebox.showinfo('تم التصدير',str(base.with_suffix('.pdf')))
+                HTML(string=html_doc(self.current),base_url=str(EXPORT_DIR)).write_pdf(target)
+                if messagebox.askyesno('تم التصدير','تم تصدير ملف PDF بنجاح. هل تريد فتحه الآن؟'): os.startfile(target) if os.name=='nt' else webbrowser.open(Path(target).as_uri())
             except Exception as e: messagebox.showerror('تعذر تصدير PDF','تعذر إنشاء ملف PDF الجدولي: '+str(e))
-        elif kind=='docx': write_docx(base.with_suffix('.docx'),render_text(self.current),self.current); messagebox.showinfo('تم التصدير',str(base.with_suffix('.docx')))
+        elif kind=='docx':
+            target=filedialog.asksaveasfilename(title='حفظ ملف Word',initialfile=f'جذاذة - {title}.docx',defaultextension='.docx',filetypes=[('ملف Word','*.docx')])
+            if not target: return
+            try:
+                write_docx(Path(target),render_text(self.current),self.current)
+                if messagebox.askyesno('تم التصدير','تم تصدير ملف Word بنجاح. هل تريد فتحه الآن؟'): os.startfile(target) if os.name=='nt' else webbrowser.open(Path(target).as_uri())
+            except Exception as e: messagebox.showerror('تعذر تصدير Word',str(e))
         else:
-            f=base.with_suffix('.html'); f.write_text(html_doc(self.current),encoding='utf-8'); webbrowser.open(f.as_uri())
+            target=filedialog.asksaveasfilename(title='حفظ نسخة المعاينة',initialfile=f'جذاذة - {title}.html',defaultextension='.html',filetypes=[('صفحة معاينة','*.html')])
+            if not target: return
+            Path(target).write_text(html_doc(self.current),encoding='utf-8'); webbrowser.open(Path(target).as_uri())
+
     def show_templates(self):
         self.clear(); self.header('القوالب','إدارة المراحل الثابتة وقوالب الجذاذات'); c=self.card();
         for t in self.store.data['templates']:
