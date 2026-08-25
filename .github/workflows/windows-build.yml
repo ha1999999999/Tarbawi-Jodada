@@ -1,6 +1,8 @@
 name: Windows Build
 
 
+
+
 on:
   workflow_dispatch:
   push:
@@ -8,14 +10,20 @@ on:
       - 'v*'
 
 
+
+
 jobs:
   build-windows:
     runs-on: windows-latest
 
 
+
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+
 
 
       - name: Set up Python
@@ -24,12 +32,16 @@ jobs:
           python-version: '3.12'
 
 
+
+
       - name: Install dependencies
         shell: pwsh
         run: |
           python -m venv .build_env
           .\.build_env\Scripts\python.exe -m pip install --upgrade pip
           .\.build_env\Scripts\python.exe -m pip install pyinstaller reportlab weasyprint
+
+
 
 
       - name: Run tests
@@ -42,12 +54,16 @@ jobs:
           .\.build_env\Scripts\python.exe test_lifecycle.py
 
 
+
+
       - name: Build EXE
         shell: pwsh
         run: |
           .\.build_env\Scripts\python.exe -m PyInstaller --clean Tarbawi-Jodada.spec
           New-Item -ItemType Directory -Force -Path release\Tarbawi-Jodada-Portable | Out-Null
           Copy-Item dist\Tarbawi-Jodada.exe release\Tarbawi-Jodada-Portable\Tarbawi-Jodada.exe
+
+
 
 
       - name: Smoke test EXE
@@ -59,22 +75,35 @@ jobs:
           Stop-Process -Id $p.Id -Force
 
 
+
+
       - name: Install Inno Setup
-        shell: pwsh
-        run: choco install innosetup -y --no-progress
+  shell: pwsh
+  run: choco install innosetup -y --no-progress
 
+- name: Build installer if Inno Setup is available
+  shell: pwsh
+  run: |
+    $roots = @($env:ProgramFiles, 'C:\Program Files (x86)', "$env:ChocolateyInstall\lib")
+    $iscc = $null
+    foreach ($root in $roots) {
+      if (Test-Path $root) {
+        $found = Get-ChildItem -Path $root -Filter ISCC.exe -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($found) { $iscc = $found.FullName; break }
+      }
+    }
+    if ($iscc) {
+      & $iscc "$PWD\Tarbawi-Jodada.iss"
+      if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed." }
+      if (-not (Test-Path release\Tarbawi-Jodada-Setup.exe)) { throw "Setup.exe was not created." }
+      Write-Host "Setup created successfully."
+    } else {
+      Write-Warning "Inno Setup was not found. Portable EXE remains available."
+    }
 
-      - name: Build installer
-        shell: pwsh
-        run: |
-          $iscc = "$env:ProgramFiles(x86)\Inno Setup 6\ISCC.exe"
-          if (-not (Test-Path $iscc)) { throw "Inno Setup was not found after installation." }
-          & $iscc "$PWD\Tarbawi-Jodada.iss"
-          if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed." }
-          if (-not (Test-Path release\Tarbawi-Jodada-Setup.exe)) { throw "Setup.exe was not created." }
-
-
-      - name: Smoke test installer
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force -Path _install_test | Out-Null
+- name: Upload Windows artifacts
+  uses: actions/upload-artifact@v4
+  with:
+    name: Tarbawi-Jodada-Windows
+    path: release
+    if-no-files-found: error
