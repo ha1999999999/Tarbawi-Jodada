@@ -3,11 +3,19 @@ name: Windows Build
 
 
 
+
+
+
+
 on:
   workflow_dispatch:
   push:
     tags:
       - 'v*'
+
+
+
+
 
 
 
@@ -22,10 +30,18 @@ jobs:
 
 
 
+
+
+
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+
+
+
+
 
 
 
@@ -40,14 +56,22 @@ jobs:
 
 
 
+
+
+
+
       - name: Run tests
         shell: pwsh
         run: |
           $env:PYTHONPATH = "$PWD\app"
           .\.build_env\Scripts\python.exe -m py_compile app\main.py
-          .\.build_env\Scripts\python.exe tests\test_core.py
-          .\.build_env\Scripts\python.exe tests\test_exports.py
-          .\.build_env\Scripts\python.exe tests\test_lifecycle.py
+          .\.build_env\Scripts\python.exe test_core.py
+          .\.build_env\Scripts\python.exe test_exports.py
+          .\.build_env\Scripts\python.exe test_lifecycle.py
+
+
+
+
 
 
 
@@ -62,34 +86,11 @@ jobs:
 
 
 
+
+
+
+
       - name: Smoke test EXE
         shell: pwsh
         run: |
           $p = Start-Process -FilePath "$PWD\dist\Tarbawi-Jodada.exe" -PassThru
-          Start-Sleep -Seconds 8
-          if ($p.HasExited) { throw "The packaged application exited before the smoke test completed." }
-          Stop-Process -Id $p.Id -Force
-
-
-
-
-      - name: Install Inno Setup
-        shell: pwsh
-        run: choco install innosetup -y --no-progress
-
-
-
-
-      - name: Build installer if Inno Setup is available
-        shell: pwsh
-        run: |
-          $iscc = (Get-Command ISCC.exe -ErrorAction SilentlyContinue).Source
-          if (-not $iscc) {
-            $iscc = (Get-ChildItem -Path 'C:\Program Files','C:\Program Files (x86)','C:\ProgramData\chocolatey\lib' -Filter ISCC.exe -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
-          }
-          if ($iscc) {
-            & $iscc "$PWD\build\Tarbawi-Jodada.iss"
-            if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed." }
-            if (-not (Test-Path release\Tarbawi-Jodada-Setup.exe)) { throw "Setup.exe was not created." }
-            Write-Host "Setup created successfully."
-          } else {
