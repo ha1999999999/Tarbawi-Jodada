@@ -13,11 +13,14 @@ def main_test():
         lesson['stages'][1]['hypotheses']=[{'text':'فرضية أولى','original_reason':'تعليل أصلي'} for _ in range(8)]
         lesson['stages'][8]['values']=[{'name':'التوحيد','evidence':'دليل','explanation':'شرح القيمة','behaviors':'سلوك'} for _ in range(5)]
         text=main.render_text(lesson); assert len(text)>1000
-        docx=out/'lesson.docx'; main.write_docx(docx,text); assert zipfile.is_zipfile(docx)
+        rows=main.stage_activity(lesson)
+        assert all(row[2] and row[3] and row[4] for row in rows), 'automatic pedagogical fields must not be empty'
+        docx=out/'lesson.docx'; main.write_docx(docx,text,lesson); assert zipfile.is_zipfile(docx)
+        with zipfile.ZipFile(docx) as z:
+            xml=z.read('word/document.xml').decode('utf-8')
+            assert '<w:tbl>' in xml and '<w:tblHeader/>' in xml
+            assert 'استحضار المكتسبات السابقة' in xml and 'مؤشرات التقويم' in xml
         html=out/'lesson.html'; html.write_text(main.html_doc(lesson),encoding='utf-8'); assert 'dir="rtl"' in html.read_text(encoding='utf-8')
-        from reportlab.lib.pagesizes import A4
-        from reportlab.pdfgen import canvas
-        pdf=out/'lesson.pdf'; p=canvas.Canvas(str(pdf),pagesize=A4); p.drawString(50,800,'اختبار'); p.save(); assert pdf.stat().st_size>0
     print('PASS export_long_arabic')
 
 if __name__=='__main__': main_test(); print('ALL EXPORT TESTS PASSED')
