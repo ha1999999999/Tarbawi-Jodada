@@ -23,7 +23,7 @@ jobs:
         run: |
           python -m venv .build_env
           .\.build_env\Scripts\python.exe -m pip install --upgrade pip
-          .\.build_env\Scripts\python.exe -m pip install pyinstaller reportlab weasyprint
+          .\.build_env\Scripts\python.exe -m pip install -r requirements-build.txt
 
       - name: Run tests
         shell: pwsh
