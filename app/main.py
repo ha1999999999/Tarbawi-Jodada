@@ -17,6 +17,41 @@ else:
 DATA_FILE = DATA_DIR / 'data.json'
 EXPORT_DIR = DATA_DIR / 'exports'
 
+PEDAGOGICAL_DEFAULTS = {
+    'diagnostic': {
+        'abilities': ['استحضار المكتسبات السابقة', 'التعبير الشفهي', 'تشخيص التعلمات'],
+        'aids': ['أسئلة التقويم التشخيصي', 'سبورة القسم'],
+        'indicators': ['يستحضر المتعلم مكتسباته السابقة', 'يجيب عن الأسئلة الأولية', 'يحدد مكامن القوة والتعثر']},
+    'problem': {
+        'abilities': ['الملاحظة والفهم', 'طرح التساؤلات', 'اقتراح الفرضيات'],
+        'aids': ['الوضعية المشكلة', 'نص أو صورة أو سند منطلق', 'سبورة القسم'],
+        'indicators': ['يفهم عناصر الوضعية', 'يحدد السؤال الإشكالي', 'يقترح فرضية مع تعليل أولي']},
+    'task': {
+        'abilities': ['الفهم والتحليل', 'الاستدلال والمناقشة', 'التعاون وبناء التعلم'],
+        'aids': ['النصوص الشرعية أو السندات', 'الكتاب المدرسي', 'السبورة والوسائل التعليمية'],
+        'indicators': ['يستثمر السندات بشكل سليم', 'ينجز المهمة وفق المطلوب', 'يبني خلاصة مرتبطة بالدرس']},
+    'formative': {
+        'abilities': ['الاستيعاب والتطبيق', 'التعبير عن التعلمات', 'التصحيح الذاتي'],
+        'aids': ['أسئلة التقويم المرحلي', 'شبكة التقويم', 'دفتر المتعلم'],
+        'indicators': ['يجيب عن أسئلة التقويم', 'يوظف المفاهيم المكتسبة', 'يصوب أخطاءه اعتماداً على التغذية الراجعة']},
+    'scrutiny': {
+        'abilities': ['النقد والتمحيص', 'الاستدلال', 'إصدار الحكم'],
+        'aids': ['الفرضيات السابقة', 'السندات والأدلة الشرعية', 'شبكة تمحيص الفرضيات'],
+        'indicators': ['يقارن الفرضية بالأدلة', 'يصدر حكماً معللاً', 'يميز بين الصحيح وما يحتاج إلى تعديل']},
+    'values': {
+        'abilities': ['استخراج القيم', 'الربط بين التعلم والسلوك', 'الالتزام والمسؤولية'],
+        'aids': ['النصوص والسندات', 'مواقف حياتية', 'شبكة استثمار القيم'],
+        'indicators': ['يستخرج قيمة من التعلم', 'يستدل عليها من النص أو النشاط', 'يقترح سلوكاً يجسدها']},
+    'summative': {
+        'abilities': ['التركيب والتقويم', 'توظيف التعلمات', 'الاستقلالية'],
+        'aids': ['وضعية إدماجية', 'أسئلة التقويم الإجمالي', 'شبكة التصحيح'],
+        'indicators': ['يوظف مكتسباته في وضعية جديدة', 'ينظم جوابه ويعلله', 'يحقق الهدف التعلمي']},
+    'self_learning': {
+        'abilities': ['التعلم الذاتي', 'البحث والاستقصاء', 'تنظيم العمل'],
+        'aids': ['الكتاب المدرسي', 'مصادر موثوقة يحددها الأستاذ', 'بطاقة التعلم الذاتي'],
+        'indicators': ['ينجز المهمة باستقلالية', 'ينتج أثراً قابلاً للتقويم', 'يستعد للتعلم اللاحق']},
+}
+
 DEFAULT_STAGES = [
     {"name":"التقويم التشخيصي", "kind":"diagnostic", "purpose":"استحضار المكتسبات السابقة وربطها بالحصة التالية", "activities":[]},
     {"name":"تقديم الوضعية المشكلة", "kind":"problem", "purpose":"تشويق المتعلم وطرح السؤال الإشكالي واستقبال الفرضيات", "problem":"", "study":[], "hypotheses":[]},
@@ -33,8 +68,24 @@ DEFAULT_STAGES = [
 
 def now(): return datetime.now().isoformat(timespec="seconds")
 def uid(): return uuid.uuid4().hex[:12]
+def normalize_lesson(lesson):
+    """يضمن اكتمال الحقول التربوية التلقائية دون الكتابة فوق إدخالات الأستاذ."""
+    lesson.setdefault('subject', 'التربية الإسلامية')
+    lesson.setdefault('stages', json.loads(json.dumps(DEFAULT_STAGES, ensure_ascii=False)))
+    for stage in lesson.get('stages', []):
+        defaults = PEDAGOGICAL_DEFAULTS.get(stage.get('kind'), {})
+        for key in ('abilities', 'aids', 'indicators'):
+            current = stage.get(key)
+            if not isinstance(current, list) or not any(str(x).strip() for x in current):
+                stage[key] = list(defaults.get(key, []))
+            else:
+                stage[key] = [str(x).strip() for x in current if str(x).strip()]
+    return lesson
+
+
 def blank_lesson(template_id="default"):
-    return {"id":uid(), "title":"جذاذة جديدة", "institution":"", "academy":"", "directorate":"", "teacher":"", "subject":"التربية الإسلامية", "level":"", "school_year":"", "entry":"", "domain":"التزكية (عقيدة)", "unit":"", "lesson_title":"", "sessions":"", "period":"", "date":"", "references":[], "skills":[], "objectives":[], "template_id":template_id, "stages":json.loads(json.dumps(DEFAULT_STAGES, ensure_ascii=False)), "created_at":now(), "updated_at":now()}
+    lesson = {"id":uid(), "title":"جذاذة جديدة", "institution":"", "academy":"", "directorate":"", "teacher":"", "subject":"التربية الإسلامية", "level":"", "school_year":"", "entry":"", "domain":"التزكية (عقيدة)", "unit":"", "lesson_title":"", "sessions":"", "period":"", "date":"", "references":[], "skills":[], "objectives":[], "resources":[], "competency":"", "template_id":template_id, "stages":json.loads(json.dumps(DEFAULT_STAGES, ensure_ascii=False)), "created_at":now(), "updated_at":now()}
+    return normalize_lesson(lesson)
 
 def default_data():
     return {"lessons":[], "templates":[{"id":"default","name":"القالب الأساسي – الإيمان والفلسفة","description":"المراحل التربوية الرسمية المعتمدة","stages":DEFAULT_STAGES}], "settings":{"auto_save":True,"teacher":"","institution":""}}
@@ -212,20 +263,12 @@ class App(tk.Tk):
             for k in ('questions','evidences','hypotheses','values'):
                 for x in s.get(k,[]): activities.append(' | '.join(str(v) for v in x.values() if v))
             table.insert('', 'end', values=(s.get('name',''),'\n'.join(activities),', '.join(s.get('abilities',[])),'، '.join(s.get('aids',[])), '، '.join(s.get('indicators',[]))))
-        table.pack(fill='both',expand=True,padx=10,pady=10); b=self.card(); ttk.Button(b,text='تصدير PDF',command=lambda:self.export('pdf')).pack(side='right',padx=5,pady=10); ttk.Button(b,text='تصدير Word',command=lambda:self.export('docx')).pack(side='right',padx=5,pady=10); ttk.Button(b,text='طباعة',command=lambda:self.export('html',print_it=True)).pack(side='right',padx=5,pady=10); ttk.Button(b,text='العودة للمحرر',command=self.show_editor).pack(side='left',padx=5,pady=10)
+        table.pack(fill='both',expand=True,padx=10,pady=10); b=self.card(); ttk.Button(b,text='تصدير Word',command=lambda:self.export('docx')).pack(side='right',padx=5,pady=10); ttk.Button(b,text='طباعة',command=lambda:self.export('html',print_it=True)).pack(side='right',padx=5,pady=10); ttk.Button(b,text='العودة للمحرر',command=self.show_editor).pack(side='left',padx=5,pady=10)
     def save_silent(self):
         old=self.store.lesson(self.current['id']); self.current['updated_at']=now(); self.store.data['lessons']=[self.current if x['id']==self.current['id'] else x for x in self.store.data['lessons']] if old else self.store.data['lessons']+[self.current]; self.store.save()
     def export(self,kind,print_it=False):
         self.save_silent(); title=(self.current.get('lesson_title') or self.current.get('title') or 'جذاذة').replace('/','-')
-        if kind=='pdf':
-            target=filedialog.asksaveasfilename(title='حفظ ملف PDF',initialfile=f'جذاذة - {title}.pdf',defaultextension='.pdf',filetypes=[('ملف PDF','*.pdf')])
-            if not target: return
-            try:
-                from weasyprint import HTML
-                HTML(string=html_doc(self.current),base_url=str(EXPORT_DIR)).write_pdf(target)
-                if messagebox.askyesno('تم التصدير','تم تصدير ملف PDF بنجاح. هل تريد فتحه الآن؟'): os.startfile(target) if os.name=='nt' else webbrowser.open(Path(target).as_uri())
-            except Exception as e: messagebox.showerror('تعذر تصدير PDF','تعذر إنشاء ملف PDF الجدولي: '+str(e))
-        elif kind=='docx':
+        if kind=='docx':
             target=filedialog.asksaveasfilename(title='حفظ ملف Word',initialfile=f'جذاذة - {title}.docx',defaultextension='.docx',filetypes=[('ملف Word','*.docx')])
             if not target: return
             try:
@@ -274,38 +317,64 @@ def render_text(l):
         out.append('')
     return '\n'.join(out)
 
+def _lines(value):
+    if isinstance(value, list):
+        return [str(x).strip() for x in value if str(x).strip()]
+    return [x.strip() for x in str(value or '').splitlines() if x.strip()]
+
+
 def stage_activity(l):
+    normalize_lesson(l)
     rows=[]
     for s in l.get('stages',[]):
         parts=[]
-        for k in ('problem','study_text','title','goal','teacher','learner','summary','task','instructions'):
+        for k in ('problem','study_text','title','goal','teacher','learner','summary','task','instructions','product','resources','deadline'):
             if s.get(k): parts.append(str(s[k]))
-        for k in ('questions','evidences','hypotheses','values'):
-            for x in s.get(k,[]): parts.append(' | '.join(str(v) for v in x.values() if v))
-        rows.append((s.get('name',''),'\n'.join(parts),', '.join(s.get('abilities',[])),'، '.join(s.get('aids',[])),'، '.join(s.get('indicators',[]))))
+        for k in ('questions','evidences','hypotheses','values','results','activities'):
+            for x in s.get(k,[]):
+                if isinstance(x, dict):
+                    parts.append(' | '.join(str(v) for v in x.values() if v))
+                elif x: parts.append(str(x))
+        rows.append((s.get('name',''), '\n'.join(parts), '\n'.join(_lines(s.get('abilities'))), '\n'.join(_lines(s.get('aids'))), '\n'.join(_lines(s.get('indicators')))))
     return rows
+
 
 def html_doc(l):
     import html
+    normalize_lesson(l)
+    title=html.escape(l.get('lesson_title') or l.get('title','جذاذة'))
     headers=['مراحل الدرس','الأنشطة الديداكتيكية التعلمية','القدرات المستهدفة','المعينات الديداكتيكية','مؤشرات التقويم']
     head=''.join('<th>'+html.escape(x)+'</th>' for x in headers)
     body=''.join('<tr>'+''.join('<td>'+html.escape(str(v)).replace('\\n','<br>')+'</td>' for v in row)+'</tr>' for row in stage_activity(l))
-    title=html.escape(l.get('lesson_title') or l.get('title','جذاذة'))
-    return '<!doctype html><html dir="rtl"><meta charset="utf-8"><title>'+title+'</title><style>@page{size:A4 landscape;margin:9mm}body{font-family:Arial,"Noto Naskh Arabic",sans-serif;direction:rtl;margin:0;line-height:1.45;color:#111}h1{text-align:center;color:#183b56;font-size:16px;margin:4px 0 8px}table{width:100%;border-collapse:collapse;table-layout:fixed;direction:rtl;font-size:8.5px}th,td{border:1px solid #555;padding:5px;vertical-align:top;white-space:normal;overflow-wrap:anywhere}th{background:#e8eef3;font-weight:bold}thead{display:table-header-group}tr{page-break-inside:auto}.top{margin-bottom:7px;font-size:8px}.top th{width:8%;background:#e8eef3}.top td{width:25%;border:1px solid #555;padding:4px}th:nth-child(1),td:nth-child(1){width:12%}th:nth-child(2),td:nth-child(2){width:53%}th:nth-child(3),td:nth-child(3){width:13%}th:nth-child(4),td:nth-child(4){width:11%}th:nth-child(5),td:nth-child(5){width:11%}.meta{border:1px solid #888;padding:6px;margin-bottom:8px;text-align:right}</style><h1>'+title+'</h1><table class="top"><tr><th>المؤسسة</th><td>'+html.escape(l.get('institution',''))+'</td><th>الأستاذ</th><td>'+html.escape(l.get('teacher',''))+'</td><th>المادة</th><td>'+html.escape(l.get('subject','التربية الإسلامية'))+'</td></tr><tr><th>المستوى</th><td>'+html.escape(l.get('level',''))+'</td><th>السنة الدراسية</th><td>'+html.escape(l.get('school_year',''))+'</td><th>التاريخ</th><td>'+html.escape(l.get('date',''))+'</td></tr><tr><th>المدخل</th><td>'+html.escape(l.get('entry',''))+'</td><th>المجال</th><td>'+html.escape(l.get('domain',''))+'</td><th>الوحدة</th><td>'+html.escape(l.get('unit',''))+'</td></tr></table><table><thead><tr>'+head+'</tr></thead><tbody>'+body+'</tbody></table></html>'
+    meta=[('المؤسسة',l.get('institution','')),('الأكاديمية',l.get('academy','')),('المديرية',l.get('directorate','')),('الأستاذ',l.get('teacher','')),('المستوى',l.get('level','')),('السنة الدراسية',l.get('school_year','')),('المادة',l.get('subject','التربية الإسلامية')),('المدخل',l.get('entry','')),('المجال',l.get('domain','')),('الوحدة',l.get('unit','')),('عدد الحصص',l.get('sessions','')),('التاريخ',l.get('date',''))]
+    meta_html=''.join('<div><b>'+html.escape(k)+'</b><span>'+html.escape(str(v or ''))+'</span></div>' for k,v in meta)
+    return f'''<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><title>{title}</title><style>
+@page{{size:A4 landscape;margin:8mm}}*{{box-sizing:border-box}}body{{font-family:"Tahoma","Arial",sans-serif;direction:rtl;color:#111;margin:0;font-size:9px;line-height:1.35}}h1{{text-align:center;margin:0 0 3mm;font-size:17px}}.meta{{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #333;margin-bottom:3mm}}.meta div{{display:flex;border-left:1px solid #333;border-bottom:1px solid #333;min-height:7mm}}.meta div:nth-child(4n){{border-left:0}}.meta div:nth-last-child(-n+4){{border-bottom:0}}.meta b{{background:#eef1f3;padding:2mm 1.5mm;width:38%;font-weight:bold}}.meta span{{padding:2mm 1.5mm;flex:1}}table{{width:100%;border-collapse:collapse;table-layout:fixed;direction:rtl}}th,td{{border:1px solid #222;padding:2.2mm 1.7mm;vertical-align:top;white-space:pre-wrap;overflow-wrap:anywhere}}thead{{display:table-header-group}}tr{{page-break-inside:avoid}}th{{background:#e5eaee;text-align:center;font-weight:bold}}th:nth-child(1),td:nth-child(1){{width:13%}}th:nth-child(2),td:nth-child(2){{width:48%}}th:nth-child(3),td:nth-child(3){{width:14%}}th:nth-child(4),td:nth-child(4){{width:12%}}th:nth-child(5),td:nth-child(5){{width:13%}}</style><h1>جذاذة مادة التربية الإسلامية: {title}</h1><section class="meta">{meta_html}</section><table><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table></html>'''
+
+
+def _wtext(text):
+    import html
+    return html.escape(str(text or '')).replace('\n', '<w:br/>')
+
 
 def write_docx(path,text,lesson=None):
     import html
     if lesson is None:
-        content=''.join(f'<w:p><w:pPr><w:bidi/></w:pPr><w:r><w:t xml:space="preserve">{html.escape(line)}</w:t></w:r></w:p>' for line in text.splitlines())
+        content=''.join(f'<w:p><w:pPr><w:bidi/></w:pPr><w:r><w:t xml:space="preserve">{_wtext(line)}</w:t></w:r></w:p>' for line in text.splitlines())
     else:
+        normalize_lesson(lesson)
+        rows=stage_activity(lesson)
+        def tc(value, width, header=False):
+            shade='<w:shd w:fill="E5EAEE"/>' if header else ''
+            return f'<w:tc><w:tcPr><w:tcW w:w="{width}" w:type="dxa"/><w:vAlign w:val="top"/></w:tcPr><w:p><w:pPr><w:bidi/><w:jc w:val="right"/></w:pPr><w:r>{shade}<w:t xml:space="preserve">{_wtext(value)}</w:t></w:r></w:p></w:tc>'
+        widths=[1900,7000,2050,1750,1900]
         headers=['مراحل الدرس','الأنشطة الديداكتيكية التعلمية','القدرات المستهدفة','المعينات الديداكتيكية','مؤشرات التقويم']
-        def cell(v,header=False):
-            shade='<w:shd w:fill="D9E7F0"/>' if header else ''
-            return '<w:tc><w:tcPr><w:tcW w:w="2000" w:type="dxa"/></w:tcPr><w:p><w:pPr><w:bidi/></w:pPr><w:r>'+shade+'<w:t xml:space="preserve">'+html.escape(str(v))+'</w:t></w:r></w:p></w:tc>'
-        rows=['<w:tr>'+''.join(cell(h,True) for h in headers)+'</w:tr>']
-        rows += ['<w:tr>'+''.join(cell(v) for v in row)+'</w:tr>' for row in stage_activity(lesson)]
-        table='<w:tbl><w:tblPr><w:tblW w:w="10000" w:type="dxa"/><w:tblBorders><w:top w:val="single" w:sz="6"/><w:left w:val="single" w:sz="6"/><w:bottom w:val="single" w:sz="6"/><w:right w:val="single" w:sz="6"/><w:insideH w:val="single" w:sz="4"/><w:insideV w:val="single" w:sz="4"/></w:tblBorders><w:bidiVisual/></w:tblPr>'+''.join(rows)+'</w:tbl>'
-        content='<w:p><w:pPr><w:bidi/></w:pPr><w:r><w:t>'+html.escape(lesson.get('lesson_title') or lesson.get('title','جذاذة'))+'</w:t></w:r></w:p>'+table
+        header='<w:tr><w:trPr><w:tblHeader/></w:trPr>'+''.join(tc(h,w,True) for h,w in zip(headers,widths))+'</w:tr>'
+        table_rows=[header]+['<w:tr>'+''.join(tc(v,w) for v,w in zip(row,widths))+'</w:tr>' for row in rows]
+        title=lesson.get('lesson_title') or lesson.get('title','جذاذة')
+        meta=f'المؤسسة: {lesson.get("institution","")} | الأستاذ: {lesson.get("teacher","")} | المستوى: {lesson.get("level","")} | السنة الدراسية: {lesson.get("school_year","")} | المجال: {lesson.get("domain","")} | الوحدة: {lesson.get("unit","")}'
+        table='<w:tbl><w:tblPr><w:tblW w:w="14600" w:type="dxa"/><w:tblLayout w:type="fixed"/><w:bidiVisual/><w:tblBorders><w:top w:val="single" w:sz="8"/><w:left w:val="single" w:sz="8"/><w:bottom w:val="single" w:sz="8"/><w:right w:val="single" w:sz="8"/><w:insideH w:val="single" w:sz="6"/><w:insideV w:val="single" w:sz="6"/></w:tblBorders></w:tblPr>'+''.join(table_rows)+'</w:tbl>'
+        content=f'<w:p><w:pPr><w:bidi/><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="28"/></w:rPr><w:t>{_wtext("جذاذة مادة التربية الإسلامية: "+title)}</w:t></w:r></w:p><w:p><w:pPr><w:bidi/><w:jc w:val="right"/></w:pPr><w:r><w:t>{_wtext(meta)}</w:t></w:r></w:p>'+table
     files={'[Content_Types].xml':'<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>','_rels/.rels':'<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>','word/document.xml':f'<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>{content}<w:sectPr><w:pgSz w:w="16838" w:h="11906"/><w:pgMar w:top="510" w:right="510" w:bottom="510" w:left="510"/></w:sectPr></w:body></w:document>'}
     with zipfile.ZipFile(path,'w',zipfile.ZIP_DEFLATED) as z:
         for n,c in files.items(): z.writestr(n,c)
