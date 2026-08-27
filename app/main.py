@@ -352,14 +352,70 @@ def html_doc(l):
 @page{{size:A4 landscape;margin:8mm}}*{{box-sizing:border-box}}body{{font-family:"Tahoma","Arial",sans-serif;direction:rtl;color:#111;margin:0;font-size:9px;line-height:1.35}}h1{{text-align:center;margin:0 0 3mm;font-size:17px}}.meta{{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #333;margin-bottom:3mm}}.meta div{{display:flex;border-left:1px solid #333;border-bottom:1px solid #333;min-height:7mm}}.meta div:nth-child(4n){{border-left:0}}.meta div:nth-last-child(-n+4){{border-bottom:0}}.meta b{{background:#eef1f3;padding:2mm 1.5mm;width:38%;font-weight:bold}}.meta span{{padding:2mm 1.5mm;flex:1}}table{{width:100%;border-collapse:collapse;table-layout:fixed;direction:rtl}}th,td{{border:1px solid #222;padding:2.2mm 1.7mm;vertical-align:top;white-space:pre-wrap;overflow-wrap:anywhere}}thead{{display:table-header-group}}tr{{page-break-inside:avoid}}th{{background:#e5eaee;text-align:center;font-weight:bold}}th:nth-child(1),td:nth-child(1){{width:13%}}th:nth-child(2),td:nth-child(2){{width:48%}}th:nth-child(3),td:nth-child(3){{width:14%}}th:nth-child(4),td:nth-child(4){{width:12%}}th:nth-child(5),td:nth-child(5){{width:13%}}</style><h1>جذاذة مادة التربية الإسلامية: {title}</h1><section class="meta">{meta_html}</section><table><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table></html>'''
 
 
+def _pdf_rtl(value):
+    """Shape Arabic text for ReportLab while preserving readable mixed text."""
+    from arabic_reshaper import reshape
+    from bidi.algorithm import get_display
+    return get_display(reshape(str(value or '')))
+
+
 def write_pdf(path, lesson):
-    """تصدير الجذاذة إلى PDF عربي RTL بحجم A4 أفقي من نفس HTML الجدولي."""
+    """إنشاء PDF عربي RTL محلياً عبر ReportLab بلا GTK أو Pango أو WeasyPrint."""
     normalize_lesson(lesson)
     try:
-        from weasyprint import HTML
+        from reportlab.lib import colors
+        from reportlab.lib.enums import TA_RIGHT, TA_CENTER
+        from reportlab.lib.pagesizes import A4, landscape
+        from reportlab.lib.styles import ParagraphStyle
+        from reportlab.lib.units import mm
+        from reportlab.pdfbase import pdfmetrics
+        from reportlab.pdfbase.ttfonts import TTFont
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
     except ImportError as exc:
-        raise RuntimeError('مكتبة PDF غير مثبتة. أعد تشغيل البناء لتثبيت الاعتماديات.') from exc
-    HTML(string=html_doc(lesson), base_url=str(Path(path).parent)).write_pdf(str(path))
+        raise RuntimeError('محرك PDF غير مثبت داخل التطبيق.') from exc
+
+    app_root = Path(__file__).resolve().parent
+    font_regular = app_root / 'assets' / 'Amiri-Regular.ttf'
+    font_bold = app_root / 'assets' / 'Amiri-Bold.ttf'
+    if not font_regular.exists():
+        raise RuntimeError('ملف الخط العربي المضمّن غير موجود داخل التطبيق.')
+    pdfmetrics.registerFont(TTFont('Amiri', str(font_regular)))
+    if font_bold.exists():
+        pdfmetrics.registerFont(TTFont('Amiri-Bold', str(font_bold)))
+    bold_font = 'Amiri-Bold' if font_bold.exists() else 'Amiri'
+
+    page = landscape(A4)
+    doc = SimpleDocTemplate(str(path), pagesize=page, rightMargin=8*mm, leftMargin=8*mm, topMargin=8*mm, bottomMargin=8*mm, title=str(lesson.get('lesson_title') or lesson.get('title') or 'جذاذة'))
+    normal = ParagraphStyle('ArabicNormal', fontName='Amiri', fontSize=8.2, leading=11, alignment=TA_RIGHT, wordWrap='CJK', spaceAfter=0)
+    small = ParagraphStyle('ArabicSmall', parent=normal, fontSize=7.4, leading=9.5)
+    head = ParagraphStyle('ArabicHead', parent=normal, fontName=bold_font, fontSize=8.3, leading=10.5, alignment=TA_CENTER)
+    title_style = ParagraphStyle('ArabicTitle', parent=normal, fontName=bold_font, fontSize=14, leading=18, alignment=TA_CENTER)
+
+    def P(value, style=normal):
+        return Paragraph(_pdf_rtl(value).replace('\n', '<br/>'), style)
+
+    title = lesson.get('lesson_title') or lesson.get('title') or 'جذاذة'
+    story = [P(f'جذاذة مادة التربية الإسلامية: {title}', title_style), Spacer(1, 2*mm)]
+    meta = [('المؤسسة', lesson.get('institution','')), ('الأكاديمية', lesson.get('academy','')), ('المديرية', lesson.get('directorate','')), ('الأستاذ', lesson.get('teacher','')), ('المستوى', lesson.get('level','')), ('السنة الدراسية', lesson.get('school_year','')), ('المادة', lesson.get('subject','التربية الإسلامية')), ('المدخل', lesson.get('entry','')), ('المجال', lesson.get('domain','')), ('الوحدة', lesson.get('unit','')), ('عدد الحصص', lesson.get('sessions','')), ('التاريخ', lesson.get('date',''))]
+    meta_rows = []
+    for i in range(0, len(meta), 4):
+        row = []
+        for label, value in meta[i:i+4]:
+            row.extend([P(label, head), P(value, small)])
+        meta_rows.append(row)
+    meta_widths = []
+    for _ in range(4): meta_widths.extend([24*mm, 38*mm])
+    meta_table = Table(meta_rows, colWidths=meta_widths, repeatRows=0, hAlign='RIGHT')
+    meta_table.setStyle(TableStyle([('GRID',(0,0),(-1,-1),0.5,colors.HexColor('#333333')),('BACKGROUND',(0,0),(-1,-1),colors.white),('BACKGROUND',(0,0),(-1,-1),colors.HexColor('#f5f7f9')),('VALIGN',(0,0),(-1,-1),'TOP'),('RIGHTPADDING',(0,0),(-1,-1),3),('LEFTPADDING',(0,0),(-1,-1),3),('TOPPADDING',(0,0),(-1,-1),3),('BOTTOMPADDING',(0,0),(-1,-1),3)]))
+    story += [meta_table, Spacer(1, 3*mm)]
+
+    headers = ['مراحل الدرس','الأنشطة الديداكتيكية التعلمية','القدرات المستهدفة','المعينات الديداكتيكية','مؤشرات التقويم']
+    rows = [headers] + [[str(v) for v in row] for row in stage_activity(lesson)]
+    rows = [[P(v, head) if r == 0 else P(v) for v in reversed(row)] for r, row in enumerate(rows)]
+    table = Table(rows, colWidths=[25*mm, 24*mm, 29*mm, 96*mm, 84*mm], repeatRows=1, splitByRow=1, splitInRow=1, hAlign='RIGHT')
+    table.setStyle(TableStyle([('GRID',(0,0),(-1,-1),0.65,colors.HexColor('#222222')),('BACKGROUND',(0,0),(-1,0),colors.HexColor('#e5eaee')),('VALIGN',(0,0),(-1,-1),'TOP'),('ALIGN',(0,0),(-1,0),'CENTER'),('RIGHTPADDING',(0,0),(-1,-1),4),('LEFTPADDING',(0,0),(-1,-1),4),('TOPPADDING',(0,0),(-1,-1),4),('BOTTOMPADDING',(0,0),(-1,-1),4),('LINEBELOW',(0,0),(-1,0),1,colors.HexColor('#222222'))]))
+    story.append(table)
+    doc.build(story)
 
 
 def _wtext(text):
