@@ -38,6 +38,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "test_exports.py failed." }
           .\.build_env\Scripts\python.exe test_lifecycle.py
           if ($LASTEXITCODE -ne 0) { throw "test_lifecycle.py failed." }
+          .\.build_env\Scripts\python.exe test_ui_contract.py
+          if ($LASTEXITCODE -ne 0) { throw "test_ui_contract.py failed." }
 
       - name: Build EXE
         shell: pwsh
