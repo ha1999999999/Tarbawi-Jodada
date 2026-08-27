@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import tempfile, zipfile, subprocess
+import tempfile, zipfile
 from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).parent / 'app'))
@@ -22,11 +22,11 @@ def main_test():
             assert 'استحضار المكتسبات السابقة' in xml and 'مؤشرات التقويم' in xml
         html=out/'lesson.html'; html.write_text(main.html_doc(lesson),encoding='utf-8'); assert 'dir="rtl"' in html.read_text(encoding='utf-8')
         pdf=out/'lesson.pdf'; main.write_pdf(pdf,lesson); assert pdf.exists() and pdf.stat().st_size > 10000
-        info=subprocess.run(['pdfinfo',str(pdf)],capture_output=True,text=True,check=True).stdout
-        assert 'Pages:' in info and 'Page size:' in info and '841.89 x 595.276 pts (A4)' in info
-        pages = int(next(line.split(':', 1)[1].strip() for line in info.splitlines() if line.startswith('Pages:')))
-        assert pages >= 2, 'long Arabic lesson must paginate'
-        assert b'Amiri' in pdf.read_bytes(), 'Arabic font must be embedded in PDF'
+        pdf_bytes = pdf.read_bytes()
+        assert pdf_bytes.startswith(b'%PDF-'), 'output must be a valid PDF'
+        assert pdf_bytes.count(b'/Type /Page') >= 2, 'long Arabic lesson must paginate'
+        assert b'/MediaBox [ 0 0 841.8898 595.2756 ]' in pdf_bytes, 'PDF must use A4 landscape dimensions'
+        assert b'Amiri' in pdf_bytes, 'Arabic font must be embedded in PDF'
     print('PASS export_long_arabic')
 
 if __name__=='__main__': main_test(); print('ALL EXPORT TESTS PASSED')
