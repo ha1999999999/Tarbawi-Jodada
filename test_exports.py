@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import tempfile, zipfile
+import tempfile, zipfile, subprocess
 from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).parents[1] / 'app'))
@@ -21,6 +21,9 @@ def main_test():
             assert '<w:tbl>' in xml and '<w:tblHeader/>' in xml
             assert 'استحضار المكتسبات السابقة' in xml and 'مؤشرات التقويم' in xml
         html=out/'lesson.html'; html.write_text(main.html_doc(lesson),encoding='utf-8'); assert 'dir="rtl"' in html.read_text(encoding='utf-8')
+        pdf=out/'lesson.pdf'; main.write_pdf(pdf,lesson); assert pdf.exists() and pdf.stat().st_size > 10000
+        info=subprocess.run(['pdfinfo',str(pdf)],capture_output=True,text=True,check=True).stdout
+        assert 'Pages:' in info and 'Page size:' in info and '841.89 x 595.276 pts (A4)' in info
     print('PASS export_long_arabic')
 
 if __name__=='__main__': main_test(); print('ALL EXPORT TESTS PASSED')

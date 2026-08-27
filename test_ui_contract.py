@@ -17,7 +17,7 @@ checks = {
     'windows_open_dialog': 'askopenfilename' in bridge,
     'word_export': "kind == 'docx'" in bridge,
     'html_export': "kind == 'docx'" in bridge and 'html_doc' in bridge,
-    'no_pdf_active': not any(x in (html + bridge + spec + bat + workflow) for x in ('weasyprint', 'reportlab', 'export_pdf', '.pdf', 'تصدير PDF')),
+    'pdf_export': "kind == 'pdf'" in bridge and 'write_pdf' in bridge and "doExport('pdf')" in html,
     'active_entrypoint': "['app\\\\web_app.py']" in spec or "['app\\web_app.py']" in spec,
     'icon_packaged': 'tarbawi-icon.ico' in spec and 'tarbawi-icon.png' in spec,
     'double_click_build': 'PY_LAUNCHER=py -3' in bat and '-m venv' in bat and '>>>' not in bat,
