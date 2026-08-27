@@ -28,11 +28,16 @@ jobs:
       - name: Run tests
         shell: pwsh
         run: |
+          $ErrorActionPreference = 'Stop'
           $env:PYTHONPATH = "$PWD\app"
           .\.build_env\Scripts\python.exe -m py_compile app\main.py
+          if ($LASTEXITCODE -ne 0) { throw "py_compile failed." }
           .\.build_env\Scripts\python.exe test_core.py
+          if ($LASTEXITCODE -ne 0) { throw "test_core.py failed." }
           .\.build_env\Scripts\python.exe test_exports.py
+          if ($LASTEXITCODE -ne 0) { throw "test_exports.py failed." }
           .\.build_env\Scripts\python.exe test_lifecycle.py
+          if ($LASTEXITCODE -ne 0) { throw "test_lifecycle.py failed." }
 
       - name: Build EXE
         shell: pwsh
