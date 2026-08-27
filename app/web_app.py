@@ -31,6 +31,11 @@ class Api:
     def new_lesson(self):
         return blank_lesson()
 
+    def save_settings(self, settings):
+        self.store.data['settings'] = json.loads(json.dumps(settings or {}, ensure_ascii=False))
+        self.store.save()
+        return {'ok': True, 'settings': self.store.data['settings']}
+
     def delete_lesson(self, lid):
         self.store.data['lessons'] = [x for x in self.store.data['lessons'] if x['id'] != lid]
         self.store.save()
