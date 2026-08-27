@@ -4,7 +4,7 @@ import json, os, shutil, sys, webbrowser
 from pathlib import Path
 import webview
 from tkinter import Tk, filedialog
-from main import Store, blank_lesson, uid, now, html_doc, write_docx, normalize_lesson
+from main import Store, blank_lesson, uid, now, html_doc, write_docx, write_pdf, normalize_lesson
 
 BASE = Path(__file__).parent
 WEB = BASE / 'web'
@@ -55,6 +55,8 @@ class Api:
         title = (lesson.get('lesson_title') or lesson.get('title') or 'جذاذة').replace('/', '-')
         if kind == 'docx':
             target = filedialog.asksaveasfilename(title='حفظ ملف Word', initialfile=f'جذاذة - {title}.docx', defaultextension='.docx', filetypes=[('ملف Word','*.docx')])
+        elif kind == 'pdf':
+            target = filedialog.asksaveasfilename(title='حفظ ملف PDF', initialfile=f'جذاذة - {title}.pdf', defaultextension='.pdf', filetypes=[('ملف PDF','*.pdf')])
         else:
             target = filedialog.asksaveasfilename(title='حفظ المعاينة', initialfile=f'جذاذة - {title}.html', defaultextension='.html', filetypes=[('صفحة HTML','*.html')])
         root.destroy()
@@ -62,6 +64,8 @@ class Api:
         try:
             if kind == 'docx':
                 write_docx(Path(target), '', lesson)
+            elif kind == 'pdf':
+                write_pdf(Path(target), lesson)
             else:
                 Path(target).write_text(html_doc(lesson), encoding='utf-8')
             return {'ok': True, 'path': target}

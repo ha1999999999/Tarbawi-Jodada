@@ -352,6 +352,16 @@ def html_doc(l):
 @page{{size:A4 landscape;margin:8mm}}*{{box-sizing:border-box}}body{{font-family:"Tahoma","Arial",sans-serif;direction:rtl;color:#111;margin:0;font-size:9px;line-height:1.35}}h1{{text-align:center;margin:0 0 3mm;font-size:17px}}.meta{{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #333;margin-bottom:3mm}}.meta div{{display:flex;border-left:1px solid #333;border-bottom:1px solid #333;min-height:7mm}}.meta div:nth-child(4n){{border-left:0}}.meta div:nth-last-child(-n+4){{border-bottom:0}}.meta b{{background:#eef1f3;padding:2mm 1.5mm;width:38%;font-weight:bold}}.meta span{{padding:2mm 1.5mm;flex:1}}table{{width:100%;border-collapse:collapse;table-layout:fixed;direction:rtl}}th,td{{border:1px solid #222;padding:2.2mm 1.7mm;vertical-align:top;white-space:pre-wrap;overflow-wrap:anywhere}}thead{{display:table-header-group}}tr{{page-break-inside:avoid}}th{{background:#e5eaee;text-align:center;font-weight:bold}}th:nth-child(1),td:nth-child(1){{width:13%}}th:nth-child(2),td:nth-child(2){{width:48%}}th:nth-child(3),td:nth-child(3){{width:14%}}th:nth-child(4),td:nth-child(4){{width:12%}}th:nth-child(5),td:nth-child(5){{width:13%}}</style><h1>جذاذة مادة التربية الإسلامية: {title}</h1><section class="meta">{meta_html}</section><table><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table></html>'''
 
 
+def write_pdf(path, lesson):
+    """تصدير الجذاذة إلى PDF عربي RTL بحجم A4 أفقي من نفس HTML الجدولي."""
+    normalize_lesson(lesson)
+    try:
+        from weasyprint import HTML
+    except ImportError as exc:
+        raise RuntimeError('مكتبة PDF غير مثبتة. أعد تشغيل البناء لتثبيت الاعتماديات.') from exc
+    HTML(string=html_doc(lesson), base_url=str(Path(path).parent)).write_pdf(str(path))
+
+
 def _wtext(text):
     import html
     return html.escape(str(text or '')).replace('\n', '<w:br/>')
