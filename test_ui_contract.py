@@ -22,6 +22,11 @@ checks = {
     'icon_packaged': 'tarbawi-icon.ico' in spec and 'tarbawi-icon.png' in spec,
     'double_click_build': 'PY_LAUNCHER=py -3' in bat and '-m venv' in bat and '>>>' not in bat,
     'requirements_file': 'requirements-build.txt' in bat,
+    'lesson_sorting': 'function sortLessons' in html and 'lessonSort' in html,
+    'lesson_search_state': 'lessonQuery' in html and 'toLocaleLowerCase' in html,
+    'print_preview': 'function printPreview' in html and 'window.print()' in html,
+    'settings_prefill': "institution:settings.institution||''" in html and "teacher:settings.teacher||''" in html,
+    'export_cancel_feedback': "r?.cancelled" in html,
 }
 for name, ok in checks.items():
     if not ok:
